@@ -37,8 +37,9 @@ uint32_t value = 0;
 // On an arduino MEGA 2560: 20(SDA), 21(SCL)
 // On an arduino LEONARDO:   2(SDA),  3(SCL), ...
 #define OLED_RESET     -1 // Reset pin # (or -1 if sharing Arduino reset pin)
-#define SCREEN_ADDRESS 0x3C ///< See datasheet for Address; 0x3D for 128x64, 0x3C for 128x32
-Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
+
+Adafruit_SSD1306 display(128, 64, &Wire,  OLED_RESET);   // at 0x3C
+Adafruit_SSD1306 display2(128, 64, &Wire, OLED_RESET);
 
 class MyServerCallbacks : public BLEServerCallbacks {
   void onConnect(BLEServer *pServer) {
@@ -60,6 +61,9 @@ size_t feature_ix = 0;
 
 void setup() {
   Serial.begin(115200);
+  Wire.begin(6,7);
+  display.begin(SSD1306_SWITCHCAPVCC, 0x3C);
+  display2.begin(SSD1306_SWITCHCAPVCC, 0x3D);
 
   if (!ads.begin(0x48)) { // 0x48 default, check your ADDR pin
     Serial.println("ADS1115 not found. Check wiring!");
@@ -69,19 +73,24 @@ void setup() {
   // Full-scale range = ±6.144 V (smallest gain, no clipping with 5V sensors)
   ads.setGain(GAIN_TWOTHIRDS);
 
-  if(!display.begin(SSD1306_SWITCHCAPVCC, SCREEN_ADDRESS)) {
-    Serial.println(F("SSD1306 allocation failed"));
-    for(;;); // Don't proceed, loop forever
-  }
-
+  display2.display();
   // Show initial display buffer contents on the screen --
   // the library initializes this with an Adafruit splash screen.
   display.display();
   delay(2000); // Pause for 2 seconds
 
   // Clear the buffer
+  display2.clearDisplay();
   display.clearDisplay();
+
+  display2.display();
   display.display();
+
+  display2.setTextSize(1);
+  display2.setTextColor(SSD1306_WHITE);
+  display2.setCursor(0, 0);
+  display2.println("Display 2");
+  display2.display();
 
   display.setTextSize(1);
   display.setTextColor(SSD1306_WHITE);
@@ -134,18 +143,8 @@ void loop() {
   int16_t rawMQ8   = ads.readADC_SingleEnded(1); // A1 → MQ-8 (H2)
   int16_t rawMQ135 = ads.readADC_SingleEnded(2); // A2 → MQ-135
 
-  Serial.print("MQ-7 raw: ");
-  Serial.print(rawMQ7);
-  Serial.print(" | MQ-8 raw: ");
-  Serial.print(rawMQ8);
-  Serial.print(" | MQ-135 raw: ");
-  Serial.println(rawMQ135);
-
-
-  if (!Serial.available()) return;
-  String line = Serial.readStringUntil('\n');
+  String line = "1356, 162, 1648, 381";
   line.trim();
-  if (line.length() == 0) return;
 
   // Parse 4 comma-separated values
   float ch4, co, odor, ch2o;
@@ -270,6 +269,18 @@ void loop() {
 
   // Finally push everything to the OLED
   display.display();
+
+  display2.clearDisplay();
+  display2.setCursor(0, 0);   
+  display2.print("MQ-7: ");   
+  display2.println(rawMQ7);
+  display2.setCursor(0, 16);  
+  display2.print("MQ-8: ");   
+  display2.println(rawMQ8);
+  display2.setCursor(0, 32);  
+  display2.print("MQ-135: "); 
+  display2.println(rawMQ135);
+  display2.display();
 
 
 
